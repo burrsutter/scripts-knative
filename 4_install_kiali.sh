@@ -7,8 +7,8 @@
 # and
 # echo "https://$(minikube ip):$(kubectl get svc grafana -n istio-system -o 'jsonpath={.spec.ports[0].nodePort}')"
 
-export JAEGER_URL="https://$(minikube ip):$(kubectl get svc jaeger-query -n istio-system -o 'jsonpath={.spec.ports[0].nodePort}')"
-export GRAFANA_URL="https://$(minikube ip):$(kubectl get svc grafana -n istio-system -o 'jsonpath={.spec.ports[0].nodePort}')"
+export JAEGER_URL="https://$(minikube -p knative ip):$(kubectl get svc jaeger-query -n istio-system -o 'jsonpath={.spec.ports[0].nodePort}')"
+export GRAFANA_URL="https://$(minikube -p knative ip):$(kubectl get svc grafana -n istio-system -o 'jsonpath={.spec.ports[0].nodePort}')"
 VERSION_LABEL="v0.10.0"
 
 # Installs Kiali's configmap

@@ -4,7 +4,7 @@ cd ../knative-tutorial/04-build/knative/
 
 kubectl apply -n knativetutorial -f docker-build.yaml
 
-watch kubectl -n knativetutorial get build docker-build
+kubectl -n knativetutorial get pods
 
-echo 'then check docker hub'
+echo 'stern docker-build'
 

@@ -9,6 +9,9 @@ spec:
         metadata:
           labels:
             app: event-greeter
+          annotations:
+            # Target 10 in-flight-requests per pod.
+            autoscaling.knative.dev/target: "10"
         spec:
           container:
-            image: docker.io/burrsutter/event-greeter:0.0.11
+            image: docker.io/burrsutter/event-greeter:0.0.12

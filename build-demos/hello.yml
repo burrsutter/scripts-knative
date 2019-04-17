@@ -1,0 +1,9 @@
+apiVersion: build.knative.dev/v1alpha1
+kind: Build
+metadata:
+  name: hello
+spec:
+  steps:
+  - name: mystep
+    image: busybox
+    args: ['echo', 'Hello, World!']

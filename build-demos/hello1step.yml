@@ -1,0 +1,13 @@
+apiVersion: build.knative.dev/v1alpha1
+kind: Build
+metadata:
+  name: hello1step
+  labels:
+    expect: succeeded
+spec:
+  steps:
+  - name: step1
+    image: fedora
+    command: ["/bin/bash"]
+    args: ["-c", "sleep 10"]
+  

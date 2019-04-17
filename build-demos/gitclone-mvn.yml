@@ -1,0 +1,20 @@
+apiVersion: build.knative.dev/v1alpha1
+kind: Build
+metadata:
+  name: gitclonemvn
+spec:
+  source:
+    git:
+      revision: master
+      url: https://github.com/burrsutter/knative-tutorial-greeter.git
+  steps:
+  - name: s3
+    image: busybox
+    args: ['ls', '/workspace/java/']
+  - name: mvnbuild
+    image: gcr.io/cloud-builders/mvn
+    args: ["compile", "package"]
+    workingDir: /workspace/java/springboot
+  - name: s5
+    image: busybox
+    args: ['ls', '/workspace/java/springboot/target']

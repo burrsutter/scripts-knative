@@ -7,17 +7,17 @@ spec:
   source:
     git:
       revision: master
-      url: https://github.com/burrsutter/knative-tutorial-event-greeter.git
+      url: https://github.com/burrsutter/knative-tutorial-greeter.git
   steps:
   - args:
     - --context=/workspace/java/springboot
-    - --dockerfile=/workspace/java/springboot/Dockerfile
-    - --destination=docker.io/burrsutter/event-greeter:0.0.11
+    - --dockerfile=/workspace/java/springboot/Dockerfile.all
+    - --destination=docker.io/burrsutter/event-greeter:0.0.12
     env:
     - name: DOCKER_CONFIG
       value: /builder/home/.docker
     image: gcr.io/kaniko-project/executor
-    name: docker-push
+    name: build-and-push
     volumeMounts:
     - mountPath: /builder/home/.m2
       name: m2-cache

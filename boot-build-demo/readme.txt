@@ -22,11 +22,11 @@ Create Knative Service based on the dockerhub image
 
 kubectl apply -n knativetutorial -f service-build.yaml
 
-./poll_event_greeter.sh
+../poll_event_greeter.sh
 
 Subsequent Builds
 Edit Java code and git commit/push
-Edit docker-build.yaml for the correct image tag 0.0.9
+Edit docker-build.yaml for the correct image tag 0.0.13
 kubectl delete build docker-build
 kubectl apply -n knativetutorial -f docker-build.yaml
 stern docker-build
@@ -34,4 +34,4 @@ stern docker-build
 Edit service-build.yaml for the correct image tag 0.0.9
 kubectl apply -n knativetutorial -f service-build.yaml
 
-./poll_event_greeter.sh
+../poll_event_greeter.sh

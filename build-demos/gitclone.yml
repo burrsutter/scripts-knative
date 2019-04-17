@@ -1,0 +1,17 @@
+apiVersion: build.knative.dev/v1alpha1
+kind: Build
+metadata:
+  name: gitclone
+spec:
+  source:
+    git:
+      revision: master
+      url: https://github.com/burrsutter/knative-tutorial-greeter.git
+  steps:
+  - name: s3
+    image: busybox
+    args: ['ls', '/workspace/java/']
+  - name: s4
+    image: fedora
+    command: ["/bin/bash"]
+    args: ["-c", "sleep 12"]

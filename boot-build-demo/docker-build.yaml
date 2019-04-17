@@ -12,7 +12,7 @@ spec:
   - args:
     - --context=/workspace/java/springboot
     - --dockerfile=/workspace/java/springboot/Dockerfile.all
-    - --destination=docker.io/burrsutter/event-greeter:0.0.12
+    - --destination=docker.io/burrsutter/event-greeter:0.0.13
     env:
     - name: DOCKER_CONFIG
       value: /builder/home/.docker

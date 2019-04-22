@@ -18,3 +18,8 @@ spec:
   - name: s5
     image: busybox
     args: ['ls', '/workspace/java/springboot/target']
+  - name: s6
+    image: fedora
+    command: ["/bin/bash"]
+    args: ["-c", "sleep 10"]
+

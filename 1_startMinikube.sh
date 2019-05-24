@@ -6,4 +6,4 @@ minikube start -p knative --memory=10240 --cpus=4 \
   --disk-size=50g \
   --extra-config=apiserver.enable-admission-plugins="LimitRanger,NamespaceExists,NamespaceLifecycle,ResourceQuota,ServiceAccount,DefaultStorageClass,MutatingAdmissionWebhook"
 
-minikube -p knative addons enable registry
+# minikube -p knative addons enable registry

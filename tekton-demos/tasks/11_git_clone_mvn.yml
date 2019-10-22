@@ -12,23 +12,12 @@ spec:
     - name: ls1
       image: fedora
       command: ['ls', '/workspace/mysources/java/springboot']
-    - name: mkdir
-      image: fedora
-      command: ['bash']
-      args: ["-c","mkdir -p /workspace/.m2"]
-    - name: ls2
-      image: fedora
-      command: ['ls', '-la']
     - name: mvn-build
       image: maven:3.6.0-jdk-11
-#      image: maven:3.6.0-jdk-11-slim
-#      image: gcr.io/cloud-builders/mvn
-      env:
-      - name: USER_HOME
-        value: /workspace
       command: ['mvn']
       args:
-      - clean 
+      - -Duser.home=/builder/home
+      - clean
       - package
       workingDir:  '/workspace/mysources/java/springboot'      
   inputs:

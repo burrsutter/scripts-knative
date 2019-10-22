@@ -14,6 +14,6 @@ spec:
     - name: ls
       image: fedora
       command: ['ls', '-la']
-    - name: what
+    - name: who
       image: fedora
-      command: ['cat', '/etc/os-release']      
+      command: ['cat', '/etc/os-release']

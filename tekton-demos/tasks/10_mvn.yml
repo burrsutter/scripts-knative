@@ -1,0 +1,23 @@
+apiVersion: tekton.dev/v1alpha1
+kind: TaskRun
+metadata:
+  generateName: mvn-
+spec:
+  taskSpec:
+    steps:
+    - name: maven-home
+      image: maven:3.6.0-jdk-11
+      command: ['bash']
+      args: ["-c","echo $MAVEN_HOME"]
+    - name: ls-maven-home
+      image: maven:3.6.0-jdk-11
+      command: ['bash']
+      args: ["-c","ls -la $MAVEN_HOME"]
+    - name: ls-maven-conf
+      image: maven:3.6.0-jdk-11
+      command: ['bash']
+      args: ["-c","ls -la $MAVEN_HOME/conf"]
+    - name: cat-maven-settings
+      image: maven:3.6.0-jdk-11
+      command: ['bash']
+      args: ["-c","cat $MAVEN_HOME/conf/settings.xml"]

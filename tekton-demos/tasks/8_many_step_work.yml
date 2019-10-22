@@ -1,0 +1,25 @@
+apiVersion: tekton.dev/v1alpha1
+kind: TaskRun
+metadata:
+  generateName: many-step-work-
+spec:
+  taskSpec:
+    steps:
+    - name: pwd
+      image: fedora
+      command: ['pwd']
+    - name: ls1
+      image: fedora
+      command: ['ls', '-la']
+    - name: hello
+      image: fedora
+      command: ['bash']
+      args: ["-c","echo 'blah,blah,blah' > myfile.txt"]
+    - name: ls2
+      image: fedora
+      command: ['ls', '-la']
+    - name: cat
+      image: fedora
+      command: ['cat', 'myfile.txt']
+
+ 

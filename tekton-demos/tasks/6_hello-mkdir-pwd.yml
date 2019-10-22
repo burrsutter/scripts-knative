@@ -1,0 +1,17 @@
+apiVersion: tekton.dev/v1alpha1
+kind: TaskRun
+metadata:
+  generateName: hello-mkdir-pwd-
+spec:
+  taskSpec:
+    steps:
+    - name: pwd
+      image: fedora
+      command: ['pwd']
+    - name: mkdir
+      image: fedora
+      command: ['bash']
+      args: ["-c","mkdir -p /workspace/burr"]
+    - name: ls
+      image: fedora
+      command: ['ls', '-la']

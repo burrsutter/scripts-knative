@@ -1,0 +1,10 @@
+apiVersion: tekton.dev/v1alpha1
+kind: TaskRun
+metadata:
+  generateName: who-
+spec:
+  taskSpec:
+    steps:
+    - name: who
+      image: fedora
+      command: ['cat', '/etc/os-release']

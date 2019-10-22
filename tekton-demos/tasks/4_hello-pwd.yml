@@ -1,0 +1,10 @@
+apiVersion: tekton.dev/v1alpha1
+kind: TaskRun
+metadata:
+  generateName: hello-pwd-
+spec:
+  taskSpec:
+    steps:
+    - name: pwd
+      image: fedora
+      command: ['pwd']

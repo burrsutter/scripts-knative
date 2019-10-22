@@ -1,0 +1,32 @@
+apiVersion: tekton.dev/v1alpha1
+kind: TaskRun
+metadata:
+  generateName: git-clone-mvn-
+spec:
+  taskSpec:
+    inputs:
+      resources:
+      - name: mysources
+        type: git
+    steps:
+    - name: ls
+      image: fedora
+      command: ['ls', '/workspace/mysources/java/springboot']
+    - name: mvn-build
+#      image: maven:3.6.0-jdk-11-slim
+      image: gcr.io/cloud-builders/mvn
+      command: ['mvn']
+      workingDir:  '/workspace/mysources/java/springboot'
+      args:
+      - clean 
+      - package
+  inputs:
+    resources:
+    - name: mysources
+      resourceSpec:
+        type: git
+        params:
+          - name: revision
+            value: master
+          - name: url
+            value: https://github.com/burrsutter/knative-tutorial-greeter.git

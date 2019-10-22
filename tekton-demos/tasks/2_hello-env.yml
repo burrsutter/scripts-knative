@@ -1,0 +1,14 @@
+apiVersion: tekton.dev/v1alpha1
+kind: TaskRun
+metadata:
+  generateName: hello-env-
+spec:
+  taskSpec:
+    steps:
+    - name: hello-env
+      image: fedora
+      env:
+      - name: MYVAR
+        value: bonjour
+      command: ['bash']
+      args: ["-c", "echo $MYVAR"]

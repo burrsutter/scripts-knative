@@ -1,0 +1,10 @@
+apiVersion: tekton.dev/v1alpha1
+kind: TaskRun
+metadata:
+  generateName: hello-
+spec:
+  taskSpec:
+    steps:
+    - name: hello
+      image: fedora
+      command: ['echo', 'hello']

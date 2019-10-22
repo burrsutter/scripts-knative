@@ -1,0 +1,19 @@
+apiVersion: tekton.dev/v1alpha1
+kind: TaskRun
+metadata:
+  generateName: many-step
+spec:
+  taskSpec:
+    steps:
+    - name: hello
+      image: fedora
+      command: ['echo', 'hello']
+    - name: pwd
+      image: fedora
+      command: ['pwd']
+    - name: ls
+      image: fedora
+      command: ['ls', '-la']
+    - name: what
+      image: fedora
+      command: ['cat', '/etc/os-release']      

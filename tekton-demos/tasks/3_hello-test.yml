@@ -1,0 +1,17 @@
+apiVersion: tekton.dev/v1alpha1
+kind: TaskRun
+metadata:
+  generateName: hello-test-
+spec:
+  taskSpec:
+    steps:
+    - name: test
+      image: fedora
+      env:
+      - name: MY_VAR1
+        value: dax      
+      command: ['bash']
+      args:
+      - '-c'
+      - '[[ $MY_VAR1 == burr ]]'
+

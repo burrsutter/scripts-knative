@@ -1,0 +1,10 @@
+apiVersion: tekton.dev/v1alpha1
+kind: TaskRun
+metadata:
+  generateName: hello-ls-
+spec:
+  taskSpec:
+    steps:
+    - name: ls
+      image: fedora
+      command: ['ls', '-la']

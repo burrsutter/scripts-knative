@@ -1,0 +1,228 @@
+
+== Simple Knative
+
+=== Deploy Knative Serving Service
+----
+cd sbeventingce
+mvn clean compile package
+eval $(minikube docker-env)
+./dockerbuild.sh
+cd ..
+kubectl create namespace myeventing
+kubens myeventing
+kubectl apply -f knativefiles/1_serving.yaml
+stern eventinghello -c user-container
+----
+
+watch it come up and scale down after about 90 seconds
+
+
+=== Deploy CronJobSource
+----
+kubectl apply -f knativefiles/2_source2service.yaml
+----
+
+watch the cronjobsource pod come up
+after about 2 minutes, see the eventinghello pod scale up 
+
+== Kafka+Knative
+
+=== Deploy Kafka for Kubernetes (Strimzi) inside Minikube
+
+https://strimzi.io/quickstarts/minikube/
+
+----
+
+kubectl create namespace kafka
+
+curl -L https://github.com/strimzi/strimzi-kafka-operator/releases/download/0.15.0/strimzi-cluster-operator-0.15.0.yaml \
+  | sed 's/namespace: .*/namespace: kafka/' \
+  | kubectl apply -f - -n kafka 
+
+----
+
+=== Deploy a Kafka Cluster inside Minikube 
+
+----
+kubectl apply -f https://raw.githubusercontent.com/strimzi/strimzi-kafka-operator/0.15.0/examples/kafka/kafka-persistent-single.yaml -n kafka 
+----
+
+=== Create Kafka Topic my-topic
+
+----
+cat <<EOF | kubectl apply -f -
+apiVersion: kafka.strimzi.io/v1alpha1
+kind: KafkaTopic
+metadata:
+  name: my-topic
+  labels:
+    strimzi.io/cluster: my-cluster
+spec:
+  partitions: 100
+  replicas: 1
+EOF
+----
+
+Check that the topic was created
+----
+kubectl get kafkatopics
+kubectl describe kafkatopic my-topic
+----
+
+Publish some test messages
+
+Terminal 1
+----
+kubectl -n kafka run kafka-producer -ti --image=strimzi/kafka:0.15.0-kafka-2.3.1 --rm=true --restart=Never -- bin/kafka-console-producer.sh --broker-list my-cluster-kafka-bootstrap:9092 --topic my-topic
+
+one
+two
+three
+----
+
+Terminal 2
+----
+kubectl -n kafka run kafka-consumer -ti --image=strimzi/kafka:0.15.0-kafka-2.3.1 --rm=true --restart=Never -- bin/kafka-console-consumer.sh --bootstrap-server my-cluster-kafka-bootstrap:9092 --topic my-topic --from-beginning
+
+If you don't see a command prompt, try pressing enter.
+one
+two
+three
+----
+
+Ctrl-C to stop publisher & consumer
+
+
+=== Create the Knative Kafka Source Infrastructure
+----
+
+kubectl apply -f https://github.com/knative/eventing-contrib/releases/download/v0.8.2/kafka-importer.yaml
+
+
+curl -L https://github.com/knative/eventing-contrib/releases/download/v0.8.2/kafka-channel.yaml \
+  | sed 's/ bootstrapServers: REPLACE_WITH_CLUSTER_URL/  bootstrapServers: my-cluster-kafka-bootstrap.kafka:9092/' \
+  | kubectl apply -f -
+
+----
+
+note: "my-cluster-kafka-bootstrap.kafka:9092" comes from "kubectl get services -n kafka"
+
+and 1 new pod in namespace knative-sources
+
+----
+kubectl get pods -n knative-sources
+NAME                         READY   STATUS    RESTARTS   AGE
+kafka-controller-manager-0   1/1     Running   0          36s
+----
+
+and look for 3 new pods in namespace knative-eventing
+
+----
+kubectl get pods -n knative-eventing                                                             
+NAME                                   READY   STATUS    RESTARTS   AGE
+eventing-controller-666b79d867-kq8cc   1/1     Running   0          64m
+eventing-webhook-5867c98d9b-hzctw      1/1     Running   0          64m
+imc-controller-7c4f9945d7-s59xd        1/1     Running   0          64m
+imc-dispatcher-7b55b86649-nsjm2        1/1     Running   0          64m
+kafka-ch-controller-7c596b6b55-fzxcx   1/1     Running   0          33s
+kafka-ch-dispatcher-577958f994-4f2qs   1/1     Running   0          33s
+kafka-webhook-74bbd99f5c-c84ls         1/1     Running   0          33s
+sources-controller-694f8df9c4-pss2w    1/1     Running   0          64m  
+----
+
+and some new CRDs
+
+----
+kubectl get crds | grep kafkasources
+kafkasources.sources.eventing.knative.dev            2019-12-28T14:53:14Z
+
+kubectl get crds | grep kafkachannels
+kafkachannels.messaging.knative.dev                  2019-12-28T15:00:22Z
+----
+
+=== Deploy Knative Serving Sink Service
+----
+cd sbeventingce
+mvn clean compile package
+eval $(minikube docker-env)
+./dockerbuild.sh
+cd ..
+kubens kafka
+kubectl apply -f knativefiles/1_serving.yaml
+
+kubectl get ksvc
+
+stern eventinghello -c user-container
+----
+
+=== Create KafkaSource for my-topic
+
+----
+cat <<EOF | kubectl apply -f -
+apiVersion: sources.eventing.knative.dev/v1alpha1
+kind: KafkaSource
+metadata:
+  name: mykafka-source
+spec:
+  consumerGroup: knative-group
+  bootstrapServers: my-cluster-kafka-bootstrap:9092 
+  topics: my-topic
+  sink:
+    apiVersion: serving.knative.dev/v1alpha1
+    kind: Service
+    name: eventinghello
+EOF
+----
+
+Note: since we had some test messages of "one", "two" and "three" from earlier you should see the eventinghello service awaken to process those messages.  Wait the 90+ seconds for eventinghello to scale down before testing again
+
+=== Publish some messages
+
+Note: Knative Eventing messages needs to be JSON formatted
+
+----
+kubectl -n kafka run kafka-producer -ti --image=strimzi/kafka:0.15.0-kafka-2.3.1 --rm=true --restart=Never -- bin/kafka-console-producer.sh --broker-list my-cluster-kafka-bootstrap:9092 --topic my-topic
+
+{"hello":"world"}
+
+{"hola":"mundo"}
+
+{"bonjour":"le monde"}
+
+{"olá": "mundo"}
+
+{"hey": "duniya"}
+
+----
+
+Ctrl-C to terminate producer
+
+=== Publish a bunch of messages
+
+The Knative Serving Sink Service was defined with the following annotation
+
+----
+autoscaling.knative.dev/target: "1"
+----
+
+This means a concurrency factor of one, if you are able to push in a lot of Kafka message rapidly, you will see more than one eventinghello pod scaled up to handle the load.
+
+Deploy the simple Kafka Spammer application to push messages faster
+
+----
+cd kafkaspammer
+./1_jvmbuild.sh
+eval $(minikube docker-env)
+./2_dockerbuild_jvm.sh
+./3_deploy.sh
+./4_url.sh
+----
+
+The 4_url.sh script prints out the URL (ip + port) that you can use with curl
+
+----
+
+----
+
+
+

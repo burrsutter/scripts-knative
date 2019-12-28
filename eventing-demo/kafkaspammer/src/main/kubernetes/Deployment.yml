@@ -1,0 +1,31 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    app: kafka-spammer
+  name: kafka-spammer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kafka-spammer
+  template:
+    metadata:
+      labels:
+        app: kafka-spammer
+    spec:
+      containers:
+      - name: kafka-spammer
+        image: dev.local/rhdevelopers/kafkaspammer:1.0.0      
+        env:
+        - name: MP_MESSAGING_OUTGOING_MYSTREAM_BOOTSTRAP_SERVERS
+          value: my-cluster-kafka-bootstrap:9092
+        ports:
+          - containerPort: 8080
+        resources:
+          requests: 
+            memory: "60Mi" 
+            cpu: "250m" 
+          limits:
+            memory: "100Mi"
+            cpu: "250m" 

@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>com.redhat.developer.demos</groupId>
 	<artifactId>sbeventinghello</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>0.0.1</version>
 	<name>sbeventinghello</name>
 	<description>Demo project for Spring Boot</description>
 

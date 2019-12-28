@@ -1,3 +1,7 @@
 istio-1.3.5
 .DS_store
 .vscode
+.settings
+.classpath
+.project
+target

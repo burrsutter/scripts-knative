@@ -18,7 +18,8 @@ public class ExampleResource {
   @Produces(MediaType.APPLICATION_JSON)
   @Path("/")
   public String servingEndpoint() {
-        return "{\"hello\":\"world\"}";
+    System.out.println("ExampleResource's @GET method invoked.");
+    return "{\"hello\":\"world\"}";
   }
 
   @POST
@@ -26,7 +27,7 @@ public class ExampleResource {
   @Produces(MediaType.APPLICATION_JSON)
   @Path("/")
   public Response eventingEndpoint(@Context HttpHeaders httpHeaders,  String cloudEventJSON) {
-    
+    System.out.println("ExampleResource's @POST method invoked.");
     System.out.println("ce-id=" + httpHeaders.getHeaderString("ce-id"));
     System.out.println("ce-source=" + httpHeaders.getHeaderString("ce-source"));
     System.out.println("ce-specversion=" + httpHeaders.getHeaderString("ce-specversion"));
@@ -39,7 +40,7 @@ public class ExampleResource {
     System.out.println("POST:" + cloudEventJSON);
     
 
-        return Response.status(Status.OK).entity("{\"hello\":\"world\"}").build();        
+    return Response.status(Status.OK).entity("{\"hello\":\"world\"}").build();        
   }
 
 }

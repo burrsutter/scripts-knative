@@ -1,3 +1,8 @@
+= Scripts/Examples to compliment bit.ly/knative-tutorial
+
+=== git clone critical repos
+
+----
 git clone https://github.com/redhat-developer-demos/knative-tutorial
 
 git clone https://github.com/redhat-developer-demos/istio-tutorial
@@ -7,6 +12,20 @@ git clone https://github.com/burrsutter/scripts-istio
 git clone https://github.com/burrsutter/scripts-knative
 
 cd scripts-knative
+----
 
-Follow the Numbers
+
+=== Follow the Numbers
+
+----
+source 0_setenv_minikube.sh
+./1_startMinikube.sh
+./2_install_istio.sh
+./3_install_knative_crds.sh
+./4_install_knative_serving.sh
+./5_install_knative_eventing.sh
+./6_install_kafka_strimzi.sh
+./7_create_kafka_cluster.sh
+----
+
 

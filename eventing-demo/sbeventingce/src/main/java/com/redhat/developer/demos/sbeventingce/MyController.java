@@ -18,6 +18,7 @@ public class MyController {
   @GetMapping("/")
   public ResponseEntity<String> doGet (
     HttpEntity<String> httpEntity) {
+      System.out.println("MyController's doGet() method invoked.");
       outputStuff(httpEntity);   
       return new ResponseEntity<String>(
         "hello", HttpStatus.OK);
@@ -26,6 +27,7 @@ public class MyController {
   @PostMapping("/")
   public ResponseEntity<String> doPost (
     HttpEntity<String> httpEntity) {
+      System.out.println("MyController's doPost() method invoked.");
       outputStuff(httpEntity);
       return new ResponseEntity<String>(
         "hello", HttpStatus.OK);

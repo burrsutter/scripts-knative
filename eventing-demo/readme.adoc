@@ -2,6 +2,18 @@
 
 From basics to Kafka using the direct https://docs.google.com/presentation/d/1kQn4HBUmSDH_EcRNPB8hAsoJetrVGM9hkDI0rriFGKA/edit#slide=id.g6234e6907d_0_40[Source to (Sink) Service] approach.  This means the return value of the Service (Sink) is ignored.
 
+There are 3 "styles" of Knative Eventing, rising in complexity and in capability:
+
+* Source to Service
+  
+* Channels and Subscriptions
+
+* Brokers and Triggers
+
+
+== Sources & Sinks
+
+
 == Simple Knative Eventing
 
 Prerequistes include:
@@ -254,8 +266,7 @@ Create some test messages
 
 Terminal 1 - Producer
 ----
-kubectl -n kafka run kafka-producer -ti --image=strimzi/kafka:0.15.0-kafka-2.3.1 --rm=true --restart=Never -- bin/kafka-console-producer.sh --broker-list my-cluster-kafka-bootstrap:9092 --topic my-topic
-
+../knative-tutorial/bin/kafka-producer.sh
 >one
 >two
 >three
@@ -263,8 +274,7 @@ kubectl -n kafka run kafka-producer -ti --image=strimzi/kafka:0.15.0-kafka-2.3.1
 
 Terminal 2 - Consumer
 ----
-kubectl -n kafka run kafka-consumer -ti --image=strimzi/kafka:0.15.0-kafka-2.3.1 --rm=true --restart=Never -- bin/kafka-console-consumer.sh --bootstrap-server my-cluster-kafka-bootstrap:9092 --topic my-topic --from-beginning
-
+../knative-tutorial/bin/kafka-consumer.sh
 one
 two
 three
@@ -278,7 +288,7 @@ Ctrl-C to stop producer & consumer
 Create the Knative Kafka Source
 
 ----
-kubectl apply -f https://github.com/knative/eventing-contrib/releases/download/v0.8.2/kafka-importer.yaml
+kubectl apply -f https://github.com/knative/eventing-contrib/releases/download/v0.11.0/kafka-source.yaml
 ----
 
 This step creates Knative Kafka Source in the knative-sources namespace as well as a CRD, ServiceAccount, ClusterRole, etc 
@@ -292,9 +302,9 @@ kafka-controller-manager-0   1/1     Running   0          1m17s
 Create the Knative Kafka Channel
 
 ----
-curl -L https://github.com/knative/eventing-contrib/releases/download/v0.8.2/kafka-channel.yaml \
-  | sed 's/ bootstrapServers: REPLACE_WITH_CLUSTER_URL/  bootstrapServers: my-cluster-kafka-bootstrap.kafka:9092/' \
-  | kubectl apply -f -
+curl -L "https://github.com/knative/eventing-contrib/releases/download/v0.11.0/kafka-channel.yaml" \
+ | sed 's/REPLACE_WITH_CLUSTER_URL/my-cluster-kafka-bootstrap.kafka:9092/' \
+ | kubectl apply --filename -  
 ----
 
 note: "my-cluster-kafka-bootstrap.kafka:9092" comes from "kubectl get services -n kafka"
@@ -339,6 +349,10 @@ Then deploy the Knative Serving Service
 ----
 kubectl apply -f knativefiles/1_serving.yaml
 
+# OR
+
+kubectl apply -f knativefiles/1_serving_quay.yaml
+
 kubectl get ksvc
 ----
 
@@ -367,7 +381,7 @@ spec:
 EOF
 ----
 
-This will result iin a new pod prefixed with "mykafka-source". 
+This will result in a new pod prefixed with "mykafka-source". 
 "eventinghello" will be around until it hits its scale-down time limit.
 
 ----
@@ -390,7 +404,7 @@ Wait the 90+ seconds for eventinghello to scale down before moving on.
 Note: Knative Eventing messages needs to be JSON formatted
 
 ----
-kubectl -n kafka run kafka-producer -ti --image=strimzi/kafka:0.15.0-kafka-2.3.1 --rm=true --restart=Never -- bin/kafka-console-producer.sh --broker-list my-cluster-kafka-bootstrap:9092 --topic my-topic
+../knative-tutorial/bin/kafka-producer.sh
 
 {"hello":"world"}
 
@@ -463,4 +477,75 @@ A little video that shows the scaling in action
 
 video::scale_up_down_10.mp4[width=950]
 
+== Knative Eventing: Channels & Subscriptions
+
+If you want more than one Sink use Channels and Subscriptions to decouple 
+
+=== Channels
+
+
+
+=== Default Channel
+
+In addition to using Kafka as an event Source, you can replace the default in-memory channel of Knative Eventing with a Kafka broker as well.
+
+First inspect the default configuration for Knative Eventing
+
+----
+kubectl get cm default-ch-webhook -n knative-eventing -o yaml --export
+
+apiVersion: v1
+data:
+  default-ch-config: |
+    clusterDefault:
+      apiVersion: messaging.knative.dev/v1alpha1
+      kind: InMemoryChannel
+    namespaceDefaults:
+      some-namespace:
+        apiVersion: messaging.knative.dev/v1alpha1
+        kind: InMemoryChannel
+kind: ConfigMap
+metadata:
+  annotations:
+  creationTimestamp: null
+  name: default-ch-webhook
+  selfLink: /api/v1/namespaces/knative-eventing/configmaps/default-ch-webhook
+----
+
+Now, apply a new configuration that adds the "kafka" namespace (or whichever namespace you are working with)
+
+----
+cat <<-EOF | kubectl apply -f -
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: default-ch-webhook
+  namespace: knative-eventing
+data:
+  default-ch-config: |
+    clusterDefault:
+      apiVersion: messaging.knative.dev/v1alpha1
+      kind: InMemoryChannel
+    namespaceDefaults:
+      kafka:
+        apiVersion: messaging.knative.dev/v1alpha1
+        kind: KafkaChannel
+        spec:
+          numPartitions: 1
+          replicationFactor: 1
+EOF
+----
+
+kubectl delete pod -l app=webhook -n knative-serving
+
+kubectl exec -it -n kafka -c kafka my-cluster-kafka-0 /bin/bash
+
+cd bin
+
+ls
+
+./kafka-topics.sh --zookeeper localhost:2181 --list
+
+./kafka-topics.sh --zookeeper localhost:2181 --describe --topic my-topic
 

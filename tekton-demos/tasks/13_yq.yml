@@ -1,0 +1,39 @@
+apiVersion: tekton.dev/v1alpha1
+kind: TaskRun
+metadata:
+  generateName: yq-
+spec:
+  taskSpec:
+    inputs:
+      resources:
+      - name: mysources
+        type: git
+    steps:
+    - name: ls
+      image: fedora
+      command: ['ls', '/workspace/mysources/']
+    - name: before-yq
+      image: fedora
+      command: ['cat', '/workspace/mysources/src/main/kubernetes/Deployment_green.yml']
+    - name: yq-rewrite
+      image: docker.io/mikefarah/yq
+      command: ['yq']  
+      args:
+      - w 
+      - -i
+      - /workspace/mysources/src/main/kubernetes/Deployment_green.yml
+      - spec.template.spec.containers[0].image
+      - burr:wuz:here 
+    - name: after-yq
+      image: fedora
+      command: ['cat', '/workspace/mysources/src/main/kubernetes/Deployment_green.yml']
+  inputs:
+    resources:
+    - name: mysources
+      resourceSpec:
+        type: git
+        params:
+          - name: revision
+            value: master
+          - name: url
+            value: https://github.com/burrsutter/blue-green-canary.git

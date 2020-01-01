@@ -1,6 +1,8 @@
 package com.redhat.developer.demos.sbeventingce;
 
 
+import java.util.Map;
+
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -34,6 +36,14 @@ public class MyController {
   }
   
   private void outputStuff(HttpEntity http) {
+    System.out.println("Env Vars");
+    Map<String, String> env = System.getenv();
+    for (String envName : env.keySet()) {
+      System.out.format("%s=%s%n", envName, env.get(envName));
+    }
+    
+    System.out.println("HTTP Headers");
+
     http.getHeaders().forEach((key, value) -> {
       System.out.println(String.format("Header '%s' = %s", key, value));
     });
@@ -46,8 +56,8 @@ public class MyController {
     System.out.println("content-type=" + http.getHeaders().getContentType());
     System.out.println("content-length=" + http.getHeaders().getContentLength());
 
-
     System.out.println("POST:" + http.getBody());
     
   }  
+
 }

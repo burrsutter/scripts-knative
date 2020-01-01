@@ -1,5 +1,7 @@
 package com.redhat.developer.demos;
 
+import java.util.Map;
+
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
@@ -19,6 +21,7 @@ public class ExampleResource {
   @Path("/")
   public String servingEndpoint() {
     System.out.println("ExampleResource's @GET method invoked.");
+    outputEnv();
     return "{\"hello\":\"world\"}";
   }
 
@@ -28,6 +31,9 @@ public class ExampleResource {
   @Path("/")
   public Response eventingEndpoint(@Context HttpHeaders httpHeaders,  String cloudEventJSON) {
     System.out.println("ExampleResource's @POST method invoked.");
+    
+    outputEnv();
+
     System.out.println("ce-id=" + httpHeaders.getHeaderString("ce-id"));
     System.out.println("ce-source=" + httpHeaders.getHeaderString("ce-source"));
     System.out.println("ce-specversion=" + httpHeaders.getHeaderString("ce-specversion"));
@@ -36,11 +42,16 @@ public class ExampleResource {
     System.out.println("content-type=" + httpHeaders.getHeaderString("content-type"));
     System.out.println("content-length=" + httpHeaders.getHeaderString("content-length"));
 
-
     System.out.println("POST:" + cloudEventJSON);
     
-
     return Response.status(Status.OK).entity("{\"hello\":\"world\"}").build();        
+  }
+
+  private void outputEnv() {
+    Map<String, String> env = System.getenv();
+    for (String envName : env.keySet()) {
+      System.out.format("%s=%s%n", envName, env.get(envName));
+    }
   }
 
 }

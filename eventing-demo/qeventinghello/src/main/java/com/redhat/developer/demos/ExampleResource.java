@@ -34,6 +34,7 @@ public class ExampleResource {
     
     outputEnv();
 
+  
     System.out.println("ce-id=" + httpHeaders.getHeaderString("ce-id"));
     System.out.println("ce-source=" + httpHeaders.getHeaderString("ce-source"));
     System.out.println("ce-specversion=" + httpHeaders.getHeaderString("ce-specversion"));

@@ -250,7 +250,7 @@ kubectl config set-context --current --namespace=myeventing
 
 Next deploy the event consumer/receiver, the sink service
 
-[source,bash]
+[source,yaml]
 ----
 cat <<EOF | kubectl apply -f -
 apiVersion: serving.knative.dev/v1alpha1

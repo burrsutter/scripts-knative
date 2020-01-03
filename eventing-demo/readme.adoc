@@ -161,8 +161,7 @@ sinkbindings                    sources.eventing.knative.dev   true         Sink
 :book-namespace: knativetutorial
 
 [[ch05-knative-eventing-intro]]
-
-== Introduction
+== Understanding Knative Eventing
 As previously described in Chapter 1, Knative has two major sub-projects: Serving and Eventing. With Serving you have dynamic auto-scaling, including scaling down to zero pods, based on HTTP traffic load.  With Eventing, you now have that same auto-scaling capability but bridged into other protocols or from other sources beyond HTTP.  For example, a barrage of messages flowing through an Apache Kafka topic can cause auto-scaling of your Kubernetes-based service to handle those messages. Or perhaps a scheduled event via Cron, can cause your service to awake from its slumber and perform its duties.
 
 === Sources, Sinks, Services
@@ -212,7 +211,8 @@ There are many other Source types and you can review the current list of Sources
 
 Knative Eventing Sinks are software components that are the event receiver, the consumer of the event. Sinks can be invoked directly in a point-to-point fashion. These Sinks can target one of your Services - your code that will receive a HTTP POST with a CloudEvent payload. However, the Sink is also very flexible, it might point to a Channel or a Broker - allowing for a publish-subscribe messaging pattern - allowing for many potential receivers.
 
-=== Deploy Knative Serving Service
+[[ch05-source-to-service]]
+=== Source to Service 
 
 Knative Eventing can target or sink to a Kubernetes Service, in our case, we will use a Knative Serving Service as the target of the event - the Sink.
 
@@ -240,16 +240,17 @@ The primary focus of the code is to receive the POST and then to log out the Clo
 Details on the CloudEvent to HTTP mapping information can be found here
 https://github.com/cloudevents/spec/blob/master/http-protocol-binding.md#3-http-message-mapping
 
-=== Create Namespace
+First deploy the Knative Serving Service into namespace myeventing.
 
-Deploy the Knative Serving Service into namespace myeventing:
-
+[source,bash]
 ----
 kubectl create namespace myeventing
 kubectl config set-context --current --namespace=myeventing
 ----
 
-To deploy the event consumer/receiver, the sink service
+Next deploy the event consumer/receiver, the sink service
+
+[source,bash]
 ----
 cat <<EOF | kubectl apply -f -
 apiVersion: serving.knative.dev/v1alpha1
@@ -270,8 +271,9 @@ spec:
 EOF
 ----
 
-Verify that eventinghello deployed
+Verify that eventinghello deployed successfully where Ready is True
 
+[source,bash]
 ----
 kubectl get ksvc
 NAME            URL                                           LATESTCREATED      LATESTREADY        READY   REASON
@@ -280,21 +282,25 @@ eventinghello   http://eventinghello.myeventing.example.com   eventinghello-v1  
 
 The default behavior of Knative Serving is that the very first deployment of a Knative Serving Service will automatically scale up to 1 and after about 90 seconds it will auto-scale down to zero.
 
-You can watch the pod lifecycle with the following command:
+You can watch the pod lifecycle with the following command.
 
+[source,bash]
 ----
 watch kubectl get pods
 ----
 
 And you can monitor the logs of the eventinghello pod with
 
+[source,bash]
 ----
 stern eventing -c user-container
 ----
 
 Let eventinghello scale to zero pods before moving on.
 
-=== Deploy CronJobSource
+Deploy a CronJobSource
+
+[source,yaml]
 ----
 cat <<EOF | kubectl apply -f -
 apiVersion: sources.eventing.knative.dev/v1alpha1
@@ -311,6 +317,7 @@ spec:
 EOF
 ----
 
+[source,bash]
 ----
 kubectl get cronjobsource
 NAME                           READY   AGE
@@ -319,6 +326,7 @@ eventinghello-cronjob-source   True    10s
 
 This produces a pod with a prefix of "cronjobsource-eventinghell"
 
+[source,bash]
 ----
 watch kubectl get pods
 NAME                                            READY   STATUS    RESTARTS   AGE
@@ -327,6 +335,7 @@ cronjobsource-eventinghell-54b9ef12-2c2f-11ea   1/1     Running   0          14s
 
 After approximately 2 minutes, it will cause the eventinghello pod to scale up. 
 
+[source,bash]
 ----
 watch kubectl get pods
 NAME                                           READY   STATUS    RESTARTS   AGE
@@ -338,6 +347,7 @@ image::cron_eventing.png[Cronjob Source & Knative Eventing]
 
 And after approximately 60 seconds, eventinghello will auto-scale down to zero pods.
 
+[source,bash]
 ----
 watch kubectl get pods
 NAME                                           READY   STATUS        RESTARTS   AGE
@@ -345,10 +355,12 @@ cronjobsource-eventinghell-54b9ef12-2c2f-11ea  1/1     Running       0          
 eventinghello-v1-deployment-7cfcb664ff-r694p   2/2     Terminating   0          65s
 ----
 
-You can follow logs to see the CloudEvent details with the following command:
+You can follow logs to see the CloudEvent details by using stern.
+
+[source,bash]
 ----
 stern eventinghello -c user-container
-
+# the following sample output has been truncated for readability
 ce-id=a1e0cbea-8f66-4fa6-8f3c-e5590c4ee147
 ce-source=/apis/v1/namespaces/myeventing/cronjobsources/eventinghello-cronjob-source
 ce-specversion=1.0
@@ -359,21 +371,25 @@ content-length=22
 POST:{"key":"every 2 mins"}
 ----
 
-=== Clean Up
+Clean up your experiment by delete the whole namespace.
+
+[source,bash]
 ----
 kubectl delete namespace myeventing
 ----
 
-== Kafka+Knative Eventing
+[[ch05-kafka-knative-eventing]]
+== Kafka + Knative Eventing
 
 In this section, we will deploy Kafka (via Strimzi) and the Knative Kafka Source.  Then have the messages flowing through the Kafka topic as the event that causes the scale-up of the sink Knative Serving Service called eventhinghello.
 
-=== Deploy Kafka for Kubernetes (Strimzi) inside Minikube
+Deploy Kafka for Kubernetes (Strimzi) inside Minikube
 
 https://strimzi.io/quickstarts/minikube/
 
 Create a namespace called Kafka 
 
+[source,bash]
 ----
 kubectl create namespace kafka
 kubectl config set-context --current --namespace=kafka
@@ -381,40 +397,38 @@ kubectl config set-context --current --namespace=kafka
 
 Install the Strimzi Operator.  
 
+[source,bash]
 ----
 curl -L https://github.com/strimzi/strimzi-kafka-operator/releases/download/0.15.0/strimzi-cluster-operator-0.15.0.yaml \
   | sed 's/namespace: .*/namespace: kafka/' \
   | kubectl apply -f - -n kafka 
-
 ----
 
-The result will be the single strimzi-cluster-operator
+The result will be the single strimzi-cluster-operator.
+
+[source,bash]
 ----
 kubectl get pods
 strimzi-cluster-operator-85f596bfc7-7dgds     1/1     Running   0          1m2s
 ----
 
-As well as severl CRDs, Custom Resource Definitions, that allow you to deploy Kafka clusters into a Kubernetes cluster.
+As well as several CRDs, Custom Resource Definitions, that allow you to deploy Kafka clusters into a Kubernetes cluster.
 
+[source,bash]
 ----
 kubectl get crds | grep kafka
-kafkabridges.kafka.strimzi.io                        2020-01-02T21:49:27Z
-kafkaconnects.kafka.strimzi.io                       2020-01-02T21:49:27Z
-kafkaconnects2is.kafka.strimzi.io                    2020-01-02T21:49:27Z
-kafkamirrormakers.kafka.strimzi.io                   2020-01-02T21:49:27Z
-kafkas.kafka.strimzi.io                              2020-01-02T21:49:27Z
-kafkatopics.kafka.strimzi.io                         2020-01-02T21:49:27Z
-kafkausers.kafka.strimzi.io                          2020-01-02T21:49:27Z
+kafkabridges.kafka.strimzi.io                        2019-12-28T14:53:14Z
+kafkaconnects.kafka.strimzi.io                       2019-12-28T14:53:14Z
+kafkaconnects2is.kafka.strimzi.io                    2019-12-28T14:53:14Z
+kafkamirrormakers.kafka.strimzi.io                   2019-12-28T14:53:14Z
+kafkas.kafka.strimzi.io                              2019-12-28T14:53:14Z
+kafkatopics.kafka.strimzi.io                         2019-12-28T14:53:14Z
+kafkausers.kafka.strimzi.io                          2019-12-28T14:53:14Z
 ----
 
-=== Deploy a Kafka Cluster inside Minikube 
+Deploy a Kafka Cluster inside Minikube 
 
-----
-kubectl apply -f https://raw.githubusercontent.com/strimzi/strimzi-kafka-operator/0.15.0/examples/kafka/kafka-persistent-single.yaml -n kafka 
-----
-
-or
-
+[source,yaml]
 ----
 cat <<EOF | kubectl apply -f -
 apiVersion: kafka.strimzi.io/v1beta1
@@ -454,6 +468,7 @@ EOF
 
 The result will be a single Zookeeper, single Kafka broker and the entity-operator
 
+[source,bash]
 ----
 kubectl get pods 
 NAME                                          READY   STATUS    RESTARTS   AGE
@@ -463,10 +478,9 @@ my-cluster-zookeeper-0                        2/2     Running   0          2m22s
 strimzi-cluster-operator-85f596bfc7-7dgds     1/1     Running   0          4m22s
 ----
 
-=== Create Kafka Topic my-topic
+Create Kafka Topic my-topic
 
-Note: The partitions 10 allows for more concurrent scale-out of sink pods
-
+[source,yaml]
 ----
 cat <<EOF | kubectl apply -f -
 apiVersion: kafka.strimzi.io/v1alpha1
@@ -481,16 +495,22 @@ spec:
 EOF
 ----
 
-Check that the topic was created
+Note: The partitions 10 allows for more concurrent scale-out of sink pods
+
+Check that the topic was created.
+
+[source,bash]
 ----
 kubectl get kafkatopics
 NAME       PARTITIONS   REPLICATION FACTOR
 my-topic   10           1
 ----
 
-Create some test messages
+Create some test messages for the Kafka topic.  The sample repository includes a script for producing Kafka messages.  Execute the script and type in "one", "two", etc.
 
 Terminal 1 - Producer
+
+[source,bash]
 ----
 $BOOK_HOME/bin/kafka-producer.sh
 >one
@@ -499,6 +519,8 @@ $BOOK_HOME/bin/kafka-producer.sh
 ----
 
 Terminal 2 - Consumer
+
+[source,bash]
 ----
 $BOOK_HOME/bin/kafka-consumer.sh
 one
@@ -506,20 +528,18 @@ two
 three
 ----
 
-
-Ctrl-C to stop producer & consumer
-
-
-=== Create the Knative Kafka Source Infrastructure
+Use Ctrl-C to stop producer & consumer pods.
 
 Create the Knative Kafka Source
 
+[source,bash]
 ----
 kubectl apply -f https://github.com/knative/eventing-contrib/releases/download/v0.11.0/kafka-source.yaml
 ----
 
 This step creates Knative Kafka Source in the knative-sources namespace as well as a CRD, ServiceAccount, ClusterRole, etc 
 
+[source,bash]
 ----
 kubectl get pods -n knative-sources
 NAME                         READY   STATUS    RESTARTS   AGE
@@ -528,16 +548,19 @@ kafka-controller-manager-0   1/1     Running   0          1m17s
 
 
 Create the Knative Kafka Channel
+
+[source,bash]
 ----
 curl -L "https://github.com/knative/eventing-contrib/releases/download/v0.11.0/kafka-channel.yaml" \
  | sed 's/REPLACE_WITH_CLUSTER_URL/my-cluster-kafka-bootstrap.kafka:9092/' \
  | kubectl apply --filename -  
 ----
 
-note: "my-cluster-kafka-bootstrap.kafka:9092" comes from "kubectl get services -n kafka"
+Note: "my-cluster-kafka-bootstrap.kafka:9092" comes from "kubectl get services -n kafka"
 
 Look for 3 new pods in namespace knative-eventing with the prefix "kafka"
 
+[source,bash]
 ----
 kubectl get pods -n knative-eventing
 NAME                                   READY   STATUS    RESTARTS   AGE
@@ -551,8 +574,9 @@ kafka-webhook-74bbd99f5c-c84ls         1/1     Running   0          33s
 sources-controller-694f8df9c4-pss2w    1/1     Running   0          64m  
 ----
 
-and some new CRDs
+and some new CRDs and api-resources
 
+[source,bash]
 ----
 kubectl get crds | grep kafkasources
 kafkasources.sources.eventing.knative.dev            2019-12-28T14:53:14Z
@@ -569,10 +593,9 @@ kafkasources                    sources.eventing.knative.dev   true         Kafk
 sinkbindings                    sources.eventing.knative.dev   true         SinkBinding
 ----
 
-=== Deploy Knative Serving Sink Service
-
 Deploy the Knative Serving Service - the event consumer, the sink
 
+[source,yaml]
 ----
 cat <<EOF | kubectl apply -f -
 apiVersion: serving.knative.dev/v1alpha1
@@ -593,26 +616,27 @@ spec:
 EOF
 ----
 
-And verify that it was deployed
+And verify that it was deployed.
 
+[source,bash]
 ----
 kubectl get ksvc
 NAME            URL                                      LATESTCREATED      LATESTREADY        READY   REASON
 eventinghello   http://eventinghello.kafka.example.com   eventinghello-v1   eventinghello-v1   True
 ----
 
-Follow the logs
+Make sure to follow the logs
 
+[source,bash]
 ----
 stern eventinghello -c user-container
 ----
 
-"eventinghello" will be around until it hits its scale-down time limit.
+The initial deployment of "eventinghello" will cause it to scale up to 1 pod.  It will be around until it hits its scale-down time limit.  Allow it to scale down before continuing.
 
-=== Create KafkaSource for my-topic
+Create KafkaSource for my-topic by connecting your Kafka my-topic to eventinghello via a KafkaSource
 
-Connect your Kafka my-topic to eventinghello via a KafkaSource
-
+[source,yaml]
 ----
 cat <<EOF | kubectl apply -f -
 apiVersion: sources.eventing.knative.dev/v1alpha1
@@ -632,6 +656,7 @@ EOF
 
 This will result in a new pod prefixed with "mykafka-source". 
 
+[source,bash]
 ----
 kubectl get pods
 NAME                                           READY   STATUS    RESTARTS   AGE
@@ -642,20 +667,20 @@ mykafka-source-vxs2k-56548756cc-j7m7v          1/1     Running   0          11s
 strimzi-cluster-operator-85f596bfc7-7dgds      1/1     Running   0          25m
 ----
 
-Note: since we had some test messages of "one", "two" and "three" from earlier you should see the eventinghello service awaken to process those messages.  Since the "one", "two", and "three" were not entered as JSON, your http body will not be interpreted correctly.  Knative Eventing endpoints need JSON input.
+Note: since we had some test messages of "one", "two" and "three" from earlier you might see the eventinghello service awaken to process those messages.  Since the "one", "two", and "three" were not entered as JSON, your http body will not be interpreted correctly.  Knative Eventing endpoints require JSON input.
 
-Wait for eventinghello to scale down before moving on.
-
-=== Publish some messages
+Wait for eventinghello to scale down to zero pods before moving on then publish some Kafka messages into my-topic.
 
 Note: Knative Eventing messages needs to be JSON formatted
 
+[source,bash]
 ----
 $BOOK_HOME/bin/kafka-producer.sh
 ----
 
 And provide the following JSON-formatted messages
 
+[source,json]
 ----
 {"hello":"world"}
 
@@ -666,12 +691,16 @@ And provide the following JSON-formatted messages
 {"hey": "duniya"}
 ----
 
-While monitoring the logs 
+Make sure to monitor the logs of the eventinghello pod
+
+[source,bash]
 ----
 stern eventinghello -c user-container
 ----
 
 Output shortened for brevity and formatting reasons
+
+[source,bash]
 ----
 ce-id=partition:1/offset:1
 ce-source=/apis/v1/namespaces/kafka/kafkasources/mykafka-source#my-topic
@@ -683,31 +712,43 @@ content-length=17
 POST:{"hey": "duniya"}
 ----
 
-
-Ctrl-C to terminate producer
-
-=== Produce a bunch of messages
+Ctrl-C to terminate producer.
 
 The Knative Serving Sink Service was defined with the following annotation that limits concurrency to approximately 1 pod per event (Kafka message)
+
 
 ----
 autoscaling.knative.dev/target: "1"
 ----
 
-This means a concurrency factor of one, if you are able to push in a lot of Kafka message rapidly, you will see more than one eventinghello pod scaled up to handle the load.
+This means a concurrency factor of one, if you are able to push in a number of Kafka message rapidly, you will see more than one eventinghello pod scaled up to handle the load.
 
-Now you just need to hit the right endpoint on the Kafka Spammer application to push in 3 messages.
+I a simple Java based application has been created that allows you to push in messages rapidly.  You just need to hit the right endpoint on the Kafka Spammer application to push in 3 messages.
 
+Lauch the kafka-spammer pod.
+
+[source,bash]
 ----
 kubectl -n kafka run kafka-spammer --image=quay.io/burrsutter/kafkaspammer:1.0.2 
+----
 
+Then exec into the running kafka-spammer pod.
+
+[source,bash]
+----
 kubectl exec -i -t $(kubectl get pod -l "run=kafka-spammer" -o jsonpath='{.items[0].metadata.name}') -- /bin/sh
+----
 
+And use curl to send in 3 messages.
+
+[source,bash]
+----
 curl localhost:8080/3
 ----
 
+You should see about 3 eventinghello pods coming to life
 
-You should see about 3 eventinghello pods springing to life
+[source,bash]
 ----
 kubectl get pods  
 NAME                                           READY   STATUS    RESTARTS   AGE
@@ -722,30 +763,36 @@ mykafka-source-vxs2k-56548756cc-j7m7v          1/1     Running   0          5m12
 strimzi-cluster-operator-85f596bfc7-7dgds      1/1     Running   0          30m
 ----
 
-After approximately 60 seconds and no new messages showing up in my-topic, the 3 eventinghello pods will terminate, scale-down to zero
+After approximately 60 seconds and no new messages showing up in my-topic, the three eventinghello pods will terminate and scale-down to zero.
 
-Note: these messages are NOT being evenly distributed across the various eventinghello pods, the first one up starts consuming them immediately.
+Note: messages are NOT being evenly distributed across the various eventinghello pods, the first pod up starts consuming them all immediately.
 
 image::sending_3.png[Sending 3 messages]
 
-To close out the spammer and remove it use "exit" and then delete its deployment
+To close out the spammer and remove it use "exit" 
+
+[source,bash]
 ----
 exit 
+----
+
+and then delete its deployment
+----
 kubectl delete deployment kafka-spammer
 ----
 
-=== Clean up
+==== Clean up
 
 ----
 kubectl delete namespace kafka
 ----
 
-
-== Knative Eventing: Channels & Subscriptions
+[[ch05-channels-subscriptions]]
+=== Knative Eventing: Channels & Subscriptions
 
 If you want more than one Sink use Channels and Subscriptions to decouple the producers & consumers of events
 
-=== Channels
+==== Channels
 
 5 Step Process
 
@@ -759,13 +806,13 @@ If you want more than one Sink use Channels and Subscriptions to decouple the pr
 
 5) Create Subscription of Channel to Sink Service
 
-=== 1. Create Namespace
+==== 1. Create Namespace
 ----
 kubectl create namespace myeventing
 kubectl config set-context --current --namespace=myeventing
 ----
 
-=== 2. Create Channel
+==== 2. Create Channel
 
 ----
 cat <<EOF | kubectl apply -f -
@@ -783,7 +830,7 @@ eventinghello-ch   True             http://eventinghello-ch-kn-channel.myeventin
 ----
 
 
-=== 3. Create Source that will send to the Channel
+==== 3. Create Source that will send to the Channel
 
 ----
 cat <<EOF | kubectl apply -f -
@@ -808,7 +855,7 @@ my-cjs   True    8s
 ----
 
 
-=== 4. Create Sink Services
+==== 4. Create Sink Services
 
 ----
 cat <<EOF | kubectl apply -f -
@@ -850,7 +897,7 @@ spec:
 EOF
 ----
 
-=== 5. Create Subscriptions to Channel 
+==== 5. Create Subscriptions to Channel 
 
 ----
 cat <<EOF | kubectl apply -f -
@@ -913,12 +960,12 @@ eventinghellob-1-deployment-5c986c7586-4clpb                      2/2     Termin
 and if you wait about 60 more seconds, you will see the dev.knative.cronjob.event cause the auto-scale up of eventinghelloa and b.
 
 
-=== Clean up
+==== Clean up
 ----
 kubectl delete namespace myeventing
 ----
 
-
+[[ch05-brokers-triggers]]
 == Brokers & Triggers
 
 1. Create the namespace 
@@ -927,14 +974,14 @@ kubectl delete namespace myeventing
 4. Create triggers
 5. Push some messages
 
-=== 1. Create the namespace 
+==== 1. Create the namespace 
 
 ----
 kubectl create namespace myeventing
 kubectl config set-context --current --namespace=myeventing
 ----
 
-=== 2. Inject the broker 
+==== 2. Inject the broker 
 ----
 kubectl label namespace myeventing knative-eventing-injection=enabled
 ----
@@ -961,7 +1008,7 @@ default-kne-ingress-kn-channel   ExternalName   <none>          imc-dispatcher.k
 default-kne-trigger-kn-channel   ExternalName   <none>          imc-dispatcher.knative-eventing.svc.cluster.local   <none>            20s
 ----
 
-=== 3. Create the consumers/receivers
+==== 3. Create the consumers/receivers
 
 ----
 cat <<EOF | kubectl apply -f -
@@ -1021,7 +1068,7 @@ eventingbonjour-1-deployment-fc7858b5b-xtblj   2/2     Running   0          5s
 
 Wait approximately 60 seconds for eventingaloha and eventingbonjour to terminate, scale-down
 
-=== 4. Create triggers
+==== 4. Create triggers
 ----
 kubectl apply --filename - << EOF
 apiVersion: eventing.knative.dev/v1alpha1
@@ -1085,7 +1132,7 @@ http://default-broker.myeventing.svc.cluster.local
 
 You will need those URIs in a below
 
-=== 5. Push some messages
+==== 5. Push some messages
 
 Start stream the logs for the event consumers
 
@@ -1197,13 +1244,27 @@ More information on Brokers & Triggers
 https://knative.dev/docs/eventing/broker-trigger/
 
 
-
-
-=== Clean up
+==== Clean up
 
 ----
 kubectl delete namespace myeventing
 ----
+
+Some conclusion/wrap-up
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1418,5 +1479,3 @@ eval $(minikube docker-env)
 ./2_dockerbuild_jvm.sh
 cd ..
 ----
-
-

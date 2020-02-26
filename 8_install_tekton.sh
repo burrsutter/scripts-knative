@@ -2,4 +2,4 @@
 
 kubectl apply \
   --filename \
-  https://storage.googleapis.com/tekton-releases/previous/v0.8.0/release.yaml
+  https://github.com/tektoncd/pipeline/releases/download/v0.8.0/release.yaml

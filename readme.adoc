@@ -3,11 +3,6 @@
 === git clone critical repos
 
 ----
-git clone https://github.com/redhat-developer-demos/knative-tutorial
-
-git clone https://github.com/redhat-developer-demos/istio-tutorial
-
-git clone https://github.com/burrsutter/scripts-istio
 
 git clone https://github.com/burrsutter/scripts-knative
 
@@ -15,17 +10,307 @@ cd scripts-knative
 ----
 
 
-=== Follow the Numbers
+=== Steps
+
+==== Install Stuff
+----
+mkdir bin
+
+cd bin
+
+curl -Lo minikube https://storage.googleapis.com/minikube/releases/v1.7.2/minikube-darwin-amd64
+
+chmod +x minikube
+
+./minikube version
+
+curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.16.0/bin/darwin/amd64/kubectl 
+
+chmod +x kubectl
+
+curl -LO https://github.com/knative/client/releases/download/v0.12.0/kn-darwin-amd64
+
+mv kn-darwin-amd64 kn
+
+chmod +x kn
+
+
+export PATH=/wherever/bin
 
 ----
-source 0_setenv_minikube.sh
-./1_startMinikube.sh
-./2_install_istio.sh
-./3_install_knative_crds.sh
-./4_install_knative_serving.sh
-./5_install_knative_eventing.sh
-./6_install_kafka_strimzi.sh
-./7_create_kafka_cluster.sh
+
+==== Start Minikube
+----
+PROFILE_NAME=knativecookbook
+MEMORY=8192
+CPUS=4
+
+EXTRA_CONFIG="apiserver.enable-admission-plugins=\
+LimitRanger,\
+NamespaceExists,\
+NamespaceLifecycle,\
+ResourceQuota,\
+ServiceAccount,\
+DefaultStorageClass,\
+MutatingAdmissionWebhook"
+
+minikube profile $PROFILE_NAME
+minikube start --memory=$MEMORY --cpus=$CPUS \
+  --kubernetes-version=v1.15.0 \
+  --disk-size=50g \
+  --extra-config="$EXTRA_CONFIG" \
+  --insecure-registry='10.0.0.0/24'
+  
+----
+==== Install Knative
+
+----  
+kubectl apply --selector knative.dev/crd-install=true \
+  --filename https://github.com/knative/serving/releases/download/v0.12.0/serving-crds.yaml \
+  --filename https://github.com/knative/eventing/releases/download/v0.12.0/eventing.yaml
+  
+kubectl apply \
+  --filename \
+  https://github.com/knative/serving/releases/download/v0.12.0/serving-core.yaml
+  
+watch kubectl get pods -n knative-serving  
+  
+kubectl apply \
+  --filename \
+ https://raw.githubusercontent.com/knative/serving/v0.12.0/third_party/kourier-latest/kourier.yaml
+ 
+watch kubectl get pods -n kourier-system
+    
+kubectl patch configmap/config-network \
+  -n knative-serving \
+  --type merge \
+  -p '{"data":{"ingress.class":"kourier.ingress.networking.knative.dev"}}'
+  
+kubectl apply \
+  --selector \
+  networking.knative.dev/certificate-provider!=cert-manager \
+  --filename \
+  https://github.com/knative/eventing/releases/download/v0.12.0/eventing.yaml
+  
+watch kubectl get pods -n knative-eventing  
+  
+----
+==== Deploy First Knative Service
+----  
+kubectl create namespace knativetutorial
+
+kubectl config set-context --current --namespace=knativetutorial
+
+git clone https://github.com/redhat-developer-demos/knative-tutorial
+
+git checkout knative-cookbook
+
+cd basics 
+
+watch kubectl get pods
+
+kubectl apply -n knativetutorial -f service.yaml
+
+kubectl get ksvc
+
+kubectl get deployments -n knativetutorial
+
+kubectl get revisions
+
+kubectl --namespace knativetutorial get rev \
+--selector=serving.knative.dev/service=greeter \
+--sort-by="{.metadata.creationTimestamp}"
+
+
+kubectl get configurations
+
+kubectl get routes
+
+
+IP_ADDRESS="$(minikube ip):$(kubectl get svc kourier-external --namespace kourier-system --output 'jsonpath={.spec.ports[?(@.port==80)].nodePort}')"
+
+http $IP_ADDRESS 'Host:greeter.knativetutorial.example.com'
+
+# OR
+
+curl -H "Host:greeter.knativetutorial.example.com" $IP_ADDRESS
+----
+==== Deploy 2nd Revision
+----
+kubectl apply -n knativetutorial -f service-env.yaml
+
+kubectl get ksvc
+
+
+kubectl --namespace knativetutorial get rev \
+--selector=serving.knative.dev/service=greeter \
+--sort-by="{.metadata.creationTimestamp}"
+
+kubectl get deployments
+
+curl -H "Host:greeter.knativetutorial.example.com" $IP_ADDRESS
+
+----
+==== Shift Traffic 
 ----
 
+kn service update greeter --traffic greeter-v1=100,greeter-v2=0
 
+curl -H "Host:greeter.knativetutorial.example.com" $IP_ADDRESS
+
+kn service update greeter --traffic greeter-v1=0,greeter-v2=100
+
+curl -H "Host:greeter.knativetutorial.example.com" $IP_ADDRESS
+
+----
+
+==== kn cli
+----
+kn version
+
+# create a Knative Service, no YAML
+
+kn service create greeter --namespace knativetutorial --image quay.io/rhdevelopers/knative-tutorial-greeter:quarkus
+
+kn service list
+
+IP_ADDRESS="$(minikube ip):$(kubectl get svc kourier-external --namespace kourier-system --output 'jsonpath={.spec.ports[?(@.port==80)].nodePort}')"
+
+http $IP_ADDRESS 'Host:greeter.knativetutorial.example.com'
+
+kn service delete greeter
+----
+
+==== Knative Scaling
+----
+cd scaling
+
+kubectl apply -f service-10.yaml
+
+kubectl get ksvc
+
+curl -H "Host:prime-generator.knativetutorial.example.com" $IP_ADDRESS
+
+curl -H "Host:prime-generator.knativetutorial.example.com" $IP_ADDRESS/?sleep=3&upto=10000&memload=100
+
+brew install hey
+
+hey -c 50 -z 10s \
+  -H "Host:prime-generator.knativetutorial.example.com" \
+  "http://${IP_ADDRESS}/?sleep=3&upto=10000&memload=100"
+  
+siege -r 1 -c 30 -d 2 -v -H "Host:prime-generator.knativetutorial.example.com"  http://${IP_ADDRESS}/?sleep=3&upto=10000&memload=100
+
+watch kubectl get pods
+NAME                                            READY   STATUS    RESTARTS   AGE
+prime-generator-v1-deployment-954dd97b4-cf6sc   2/2     Running   0          44s
+prime-generator-v1-deployment-954dd97b4-lhrvn   2/2     Running   0          42s
+prime-generator-v1-deployment-954dd97b4-mbk5z   2/2     Running   0          47s
+prime-generator-v1-deployment-954dd97b4-n6tr6   2/2     Running   0          42s
+prime-generator-v1-deployment-954dd97b4-pjhzt   2/2     Running   0          44s
+
+
+
+kubectl apply -n knativetutorial -f service-min-max-scale.yaml
+
+
+curl -H "Host:prime-generator.knativetutorial.example.com" $IP_ADDRESS/?sleep=3&upto=10000&memload=100
+
+
+
+kubectl -n knativetutorial delete services.serving.knative.dev greeter  &&\
+kubectl -n knativetutorial delete services.serving.knative.dev prime-generator
+
+----
+==== Knative Eventing
+
+----
+kubens knativetutorial
+
+kubectl apply -f eventing-hello-sink.yaml 
+
+curl -H "Host:eventinghello.knativetutorial.example.com" $IP_ADDRESS
+
+kubectl apply -f eventinghello-source.yaml
+
+
+----
+=== Knative kafka
+
+----
+kubens kafka
+
+curl -L https://github.com/strimzi/strimzi-kafka-operator/releases/download/0.16.2/strimzi-cluster-operator-0.16.2.yaml \
+  | sed 's/namespace: .*/namespace: kafka/' \
+  | kubectl apply -n kafka -f -
+
+cd eventing
+
+kubectl -n kafka apply -f kafka-broker-my-cluster.yaml
+
+watch kubectl get pods
+
+kubectl get kafkas
+
+kubectl -n kafka create -f kafka-topic-my-topic.yaml
+
+kubectl -n kafka  get kafkatopics
+
+kubectl exec -it -c kafka my-cluster-kafka-0 -- bin/kafka-topics.sh --zookeeper localhost:2181 --describe --topic my-topic
+
+Topic: my-topic	PartitionCount: 10	ReplicationFactor: 1	Configs:
+
+export TUTORIAL_HOME=/Users/burrsutter/11steps/knative-tutorial
+
+$TUTORIAL_HOME/bin/kafka-producer.sh
+
+$TUTORIAL_HOME/bin/kafka-consumer.sh
+
+kubectl apply \
+-f https://github.com/knative/eventing-contrib/\
+releases/download/v0.12.2/kafka-source.yaml
+
+watch kubectl get pods -n knative-sources
+
+watch kubectl get pods -n knative-eventing
+
+
+curl -L "https://github.com/knative/eventing-contrib/\
+releases/download/v0.12.2/kafka-channel.yaml" \
+ | sed 's/REPLACE_WITH_CLUSTER_URL/my-cluster-kafka-bootstrap.kafka:9092/' \
+ | kubectl apply --filename -
+ 
+kubectl api-resources --api-group='sources.eventing.knative.dev'
+
+kubectl api-resources --api-group='messaging.knative.dev'
+
+kubectl apply -f eventing-hello-sink.yaml 
+
+stern eventinghello
+
+curl -H "Host:eventinghello.kafka.example.com" $IP_ADDRESS
+
+allow it to scale to zero
+
+kubectl apply -f eventinghello-source.yaml
+
+see if cron starts it up
+
+kubectl delete -f eventinghello-source.yaml
+
+kubectl apply -f mykafka-source.yaml
+
+$TUTORIAL_HOME/bin/kafka-producer.sh
+
+{"hey": "duniya"}
+{"bonjour":"le monde"}
+{"hola":"mundo"}
+
+kubectl -n kafka run kafka-spammer --image=quay.io/burrsutter/kafkaspammer:1.0.2
+KAFKA_SPAMMER_POD=$(kubectl -n kafka get pod -l "run=kafka-spammer" \
+ -o jsonpath='{.items[0].metadata.name}')
+ 
+kubectl -n kafka exec -it $KAFKA_SPAMMER_POD -- /bin/sh
+
+curl localhost:8080/3
+----

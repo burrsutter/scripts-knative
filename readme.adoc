@@ -1,5 +1,7 @@
 = Scripts/Examples to compliment bit.ly/knative-tutorial
 
+http://bit.ly/knative-tutorial
+
 === git clone critical repos
 
 ----
@@ -14,6 +16,8 @@ cd scripts-knative
 
 ==== Install Stuff
 ----
+cd /wherever
+
 mkdir bin
 
 cd bin
@@ -23,20 +27,27 @@ curl -Lo minikube https://storage.googleapis.com/minikube/releases/v1.7.2/miniku
 chmod +x minikube
 
 ./minikube version
+minikube version: v1.7.2
+commit: 50d543b5fcb0e1c0d7c27b1398a9a9790df09dfb
 
 curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.16.0/bin/darwin/amd64/kubectl 
 
 chmod +x kubectl
+Client Version: version.Info{Major:"1", Minor:"16", GitVersion:"v1.16.0", GitCommit:"2bd9643cee5b3b3a5ecbd3af49d09018f0773c77", GitTreeState:"clean", BuildDate:"2019-09-18T14:36:53Z", GoVersion:"go1.12.9", Compiler:"gc", Platform:"darwin/amd64"}
+
 
 curl -LO https://github.com/knative/client/releases/download/v0.12.0/kn-darwin-amd64
 
 mv kn-darwin-amd64 kn
 
 chmod +x kn
+./kn version
+Version:      v0.12.0
+Build Date:   2020-01-29 21:03:45
+Git Revision: 164cb5f
 
 
 export PATH=/wherever/bin
-
 ----
 
 ==== Start Minikube
@@ -314,3 +325,7 @@ kubectl -n kafka exec -it $KAFKA_SPAMMER_POD -- /bin/sh
 
 curl localhost:8080/3
 ----
+
+==== Tekton Pipelines
+
+http://bit.ly/tkn-tutorial
